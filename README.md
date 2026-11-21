@@ -4,9 +4,11 @@ Sistema de fila hospitalar com dashboard básico. A API é Django REST Framework
 
 A fila do dia fica em `Atendimento`: cadastro, prioridade, status, espera e cancelamento. O ano de 2025 fica em `HistoricoInternacao`, carregado de `hospital_backend/dados/patients.csv`. O arquivo é sintético, licença CC0, e não representa um hospital real. O Painel lê só esse ano: admissões por mês e permanência média por setor e por idade.
 
-## Backend
+## Como executar
 
-Na primeira vez, dentro de `hospital_backend`:
+A ordem é esta: backend, frontend e, por último, o endereço da tela. Cada servidor fica no próprio terminal.
+
+**1. Backend.** Na primeira vez, dentro de `hospital_backend`:
 
 ```powershell
 python -m venv venv
@@ -17,14 +19,25 @@ python manage.py importar_pacientes
 python manage.py runserver
 ```
 
-`Activate.ps1` liga o ambiente. Depois disso, `python` e `pip` já são os desse ambiente. Nas próximas vezes, ative e suba o servidor:
+`Activate.ps1` liga o ambiente. Depois disso, `python` e `pip` já são os desse ambiente. Nas próximas vezes:
 
 ```powershell
 .\venv\Scripts\Activate.ps1
 python manage.py runserver
 ```
 
-O backend publica a API em `http://127.0.0.1:8000`. O comando `importar_pacientes` só precisa rodar de novo se o CSV mudar. Uma nova execução atualiza as mesmas linhas.
+A API fica em `http://127.0.0.1:8000`. `importar_pacientes` só entra de novo se o CSV mudar. Uma nova execução atualiza as mesmas linhas.
+
+**2. Frontend.** Na primeira vez, dentro de `hospital_frontend`:
+
+```powershell
+npm install
+npm run dev
+```
+
+Nas próximas vezes, `npm run dev`.
+
+**3. Tela.** Abra o endereço que o Vite mostrar, em geral `http://localhost:5173`. A página chama a API do passo 1. Com o backend parado, a tela abre sem os dados.
 
 ## API
 
@@ -40,14 +53,3 @@ O backend publica a API em `http://127.0.0.1:8000`. O comando `importar_paciente
 | `GET` | `/api/historico/metricas/` | números do Painel |
 
 Não existe `DELETE` em atendimento. Cancelar é um `PATCH` com status `CANCELADO`. O histórico só aceita `GET`.
-
-## Frontend
-
-Na primeira vez, dentro de `hospital_frontend`:
-
-```powershell
-npm install
-npm run dev
-```
-
-Depois, basta `npm run dev`. O Vite mostra o endereço da tela, em geral `http://localhost:5173`. Ela chama a API em `http://127.0.0.1:8000`.
