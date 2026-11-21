@@ -4,7 +4,7 @@ Sistema de fila hospitalar com dashboard básico. A API é Django REST Framework
 
 A fila do dia fica em `Atendimento`: cadastro, prioridade, status, espera e cancelamento. O ano de 2025 fica em `HistoricoInternacao`, carregado de `hospital_backend/dados/patients.csv`. O arquivo é sintético, licença CC0, e não representa um hospital real. O Painel lê só esse ano: admissões por mês e permanência média por setor e por idade.
 
-## API
+## Backend
 
 Na primeira vez, dentro de `hospital_backend`:
 
@@ -24,9 +24,24 @@ python manage.py runserver
 python manage.py runserver
 ```
 
-A API fica em `http://127.0.0.1:8000`. O comando `importar_pacientes` só precisa rodar de novo se o CSV mudar. Uma nova execução atualiza as mesmas linhas.
+O backend publica a API em `http://127.0.0.1:8000`. O comando `importar_pacientes` só precisa rodar de novo se o CSV mudar. Uma nova execução atualiza as mesmas linhas.
 
-## Tela
+## API
+
+| Método | Endereço | Uso |
+| --- | --- | --- |
+| `GET` | `/api/atendimentos/` | lista da fila |
+| `POST` | `/api/atendimentos/` | cria um atendimento |
+| `GET` | `/api/atendimentos/{id}/` | um atendimento |
+| `PATCH` | `/api/atendimentos/{id}/` | edita ou cancela |
+| `GET` | `/api/atendimentos/resumo/` | totais dos cartões |
+| `GET` | `/api/setores/` | setores do formulário |
+| `GET` | `/api/historico/` | internações de 2025 |
+| `GET` | `/api/historico/metricas/` | números do Painel |
+
+Não existe `DELETE` em atendimento. Cancelar é um `PATCH` com status `CANCELADO`. O histórico só aceita `GET`.
+
+## Frontend
 
 Na primeira vez, dentro de `hospital_frontend`:
 
@@ -35,4 +50,4 @@ npm install
 npm run dev
 ```
 
-Depois, basta `npm run dev`. A tela abre em `http://127.0.0.1:5173` e usa a API acima.
+Depois, basta `npm run dev`. O Vite mostra o endereço da tela, em geral `http://localhost:5173`. Ela chama a API em `http://127.0.0.1:8000`.
