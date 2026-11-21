@@ -1,6 +1,6 @@
 # Painel de Atendimentos
 
-Sistema de fila hospitalar com dashboard. A API é Django REST Framework e a tela é React. O banco local é SQLite.
+Sistema de fila hospitalar com dashboard básico. A API é Django REST Framework e a tela é React. O banco local é SQLite.
 
 A fila do dia fica em `Atendimento`: cadastro, prioridade, status, espera e cancelamento. O ano de 2025 fica em `HistoricoInternacao`, carregado de `hospital_backend/dados/patients.csv`. O arquivo é sintético, licença CC0, e não representa um hospital real. O Painel lê só esse ano: admissões por mês e permanência média por setor e por idade.
 
