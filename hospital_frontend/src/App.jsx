@@ -1,82 +1,8 @@
 import { useState, useEffect } from 'react'
 import './App.css'
-
-const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
-
-function rotuloMes(anoMes) {
-  const indice = Number(String(anoMes).slice(5, 7)) - 1
-  return MESES[indice] || anoMes
-}
-
-function textoPermanencia(dias) {
-  if (dias == null) return '—'
-  return dias === 1 ? '1 dia' : `${dias} dias`
-}
-
-function formatarData(iso) {
-  if (!iso) return '—'
-  const [ano, mes, dia] = String(iso).slice(0, 10).split('-')
-  return `${dia}/${mes}/${ano}`
-}
-
-function textoPrioridade(prioridade) {
-  if (prioridade === 'ALTA') return 'Alta'
-  if (prioridade === 'MEDIA') return 'Média'
-  return 'Baixa'
-}
-
-function textoStatus(status) {
-  if (status === 'AGUARDANDO') return 'Aguardando'
-  if (status === 'EM_ATENDIMENTO') return 'Em atendimento'
-  if (status === 'CANCELADO') return 'Cancelado'
-  return 'Finalizado'
-}
-
-function textoDuracao(isoInicio, isoFim) {
-  if (!isoInicio) return '—'
-  const inicio = new Date(isoInicio).getTime()
-  const fim = isoFim ? new Date(isoFim).getTime() : Date.now()
-  if (Number.isNaN(inicio) || Number.isNaN(fim)) return '—'
-  const minutos = Math.max(0, Math.round((fim - inicio) / 60000))
-  if (minutos < 60) return `${minutos} min`
-  const horas = Math.floor(minutos / 60)
-  const resto = minutos % 60
-  return resto ? `${horas} h ${resto} min` : `${horas} h`
-}
-
-function esperaDaFila(paciente) {
-  if (paciente.status === 'EM_ATENDIMENTO') {
-    return textoDuracao(paciente.data_entrada, paciente.data_inicio)
-  }
-  return textoDuracao(paciente.data_entrada)
-}
-
-function GraficoAdmissoes({ itens }) {
-  const maior = Math.max(...itens.map((item) => item.total), 0)
-
-  return (
-    <div role="img" aria-label="Admissões por mês">
-      <div className="column-chart">
-        {itens.map((item) => {
-          const altura = maior ? Math.round((item.total / maior) * 100) : 0
-          return (
-            <div key={item.mes} className="column">
-              <span className="column-value">{item.total}</span>
-              <div className="column-track">
-                <div className="column-bar" style={{ height: `${altura}%` }} />
-              </div>
-            </div>
-          )
-        })}
-      </div>
-      <div className="column-labels">
-        {itens.map((item) => (
-          <span key={item.mes} className="column-label">{rotuloMes(item.mes)}</span>
-        ))}
-      </div>
-    </div>
-  )
-}
+import Fila from './Fila.jsx'
+import Historico from './Historico.jsx'
+import Painel from './Painel.jsx'
 
 function App() {
   const [tela, setTela] = useState('fila')
@@ -85,10 +11,6 @@ function App() {
   const [setores, setSetores] = useState([])
   const [metricas, setMetricas] = useState(null)
   const [historico, setHistorico] = useState([])
-  const [buscaHistorico, setBuscaHistorico] = useState('')
-  const [setorHistorico, setSetorHistorico] = useState('')
-  const [statusFila, setStatusFila] = useState('')
-  const [buscaFila, setBuscaFila] = useState('')
   const [carregando, setCarregando] = useState(true)
   const [modalAberto, setModalAberto] = useState(false)
   const [editandoId, setEditandoId] = useState(null)
@@ -211,30 +133,6 @@ function App() {
       .catch((err) => console.error('Erro ao cancelar:', err))
   }
 
-  const termoFila = buscaFila.trim().toLowerCase()
-  const fila = atendimentos.filter((item) => {
-    if (item.status === 'FINALIZADO' || item.status === 'CANCELADO') return false
-    if (statusFila && item.status !== statusFila) return false
-    if (!termoFila) return true
-    const nome = item.paciente_nome.toLowerCase()
-    const prontuario = (item.prontuario || '').toLowerCase()
-    return nome.includes(termoFila) || prontuario.includes(termoFila)
-  })
-  const termoHistorico = buscaHistorico.trim().toLowerCase()
-  const finalizados = atendimentos.filter((item) => {
-    if (item.status !== 'FINALIZADO' && item.status !== 'CANCELADO') return false
-    const nome = item.paciente_nome.toLowerCase()
-    const prontuario = (item.prontuario || '').toLowerCase()
-    const nomeOk = !termoHistorico || nome.includes(termoHistorico) || prontuario.includes(termoHistorico)
-    const setorOk = !setorHistorico || item.setor_nome === setorHistorico
-    return nomeOk && setorOk
-  })
-  const historicoFiltrado = historico.filter((item) => {
-    const nomeOk = item.paciente_nome.toLowerCase().includes(termoHistorico)
-    const setorOk = !setorHistorico || item.setor_nome === setorHistorico
-    return nomeOk && setorOk
-  })
-
   return (
     <div className="app-container">
       <header className="app-header">
@@ -278,265 +176,23 @@ function App() {
             <p>Carregando dados do sistema...</p>
           </div>
         ) : tela === 'fila' ? (
-          <>
-          {resumo && (
-            <div className="kpi-grid kpi-grid-fila">
-              <div className="kpi-card">
-                <div className="kpi-label">Aguardando</div>
-                <div className="kpi-value">{resumo.aguardando}</div>
-              </div>
-              <div className="kpi-card">
-                <div className="kpi-label">Em atendimento</div>
-                <div className="kpi-value">{resumo.em_atendimento}</div>
-              </div>
-              <div className="kpi-card">
-                <div className="kpi-label">Finalizados</div>
-                <div className="kpi-value">{resumo.finalizados}</div>
-              </div>
-            </div>
-          )}
-          <div className="card-panel">
-            <div className="panel-header">
-              <div>
-                <h2 className="panel-title">Lista de Atendimentos</h2>
-                <p className="panel-subtitle">Aguardando e em atendimento. Para mudar prioridade ou status, use Editar.</p>
-              </div>
-              <div className="panel-actions">
-                <input
-                  type="search"
-                  className="form-input fila-busca"
-                  placeholder="Buscar nome ou ID"
-                  value={buscaFila}
-                  onChange={(e) => setBuscaFila(e.target.value)}
-                />
-                <select
-                  className="form-input status-filter"
-                  value={statusFila}
-                  onChange={(e) => setStatusFila(e.target.value)}
-                >
-                  <option value="">Todos os status</option>
-                  <option value="AGUARDANDO">Aguardando</option>
-                  <option value="EM_ATENDIMENTO">Em atendimento</option>
-                </select>
-                <button onClick={carregarDados} className="btn-secondary">Atualizar</button>
-                <button onClick={abrirNovo} className="btn-primary">+ Novo Atendimento</button>
-              </div>
-            </div>
-
-            <div className="table-wrapper">
-              <table className="custom-table">
-                <thead>
-                  <tr>
-                    <th>Paciente</th>
-                    <th>ID</th>
-                    <th>Setor</th>
-                    <th>Prioridade</th>
-                    <th>Status</th>
-                    <th>Espera</th>
-                    <th className="action-col">Ação</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fila.length === 0 ? (
-                    <tr>
-                      <td colSpan="7" className="empty-text">
-                        {termoFila || statusFila ? 'Nenhum paciente com esse filtro.' : 'Nenhum paciente na fila.'}
-                      </td>
-                    </tr>
-                  ) : (
-                    fila.map((p) => (
-                      <tr key={p.id}>
-                        <td className="patient-name">{p.paciente_nome}</td>
-                        <td>{p.prontuario || '—'}</td>
-                        <td className="sector-name">{p.setor_nome || 'N/A'}</td>
-                        <td>
-                          <span className={`badge-priority ${p.prioridade.toLowerCase()}`}>
-                            {textoPrioridade(p.prioridade)}
-                          </span>
-                        </td>
-                        <td>
-                          <span className="status-text">{textoStatus(p.status)}</span>
-                        </td>
-                        <td>{esperaDaFila(p)}</td>
-                        <td className="action-col">
-                          <div className="row-actions">
-                            <button onClick={() => abrirEdicao(p)} className="btn-secondary">
-                              Editar
-                            </button>
-                            <button onClick={() => handleCancelar(p.id)} className="btn-delete">
-                              Cancelar
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          </>
+          <Fila
+            resumo={resumo}
+            atendimentos={atendimentos}
+            onAtualizar={carregarDados}
+            onNovo={abrirNovo}
+            onEditar={abrirEdicao}
+            onCancelar={handleCancelar}
+          />
         ) : tela === 'historico' ? (
-          <>
-            <div className="history-filters">
-              <input
-                type="search"
-                className="form-input"
-                placeholder="Buscar paciente"
-                value={buscaHistorico}
-                onChange={(e) => setBuscaHistorico(e.target.value)}
-              />
-              <select
-                className="form-input"
-                value={setorHistorico}
-                onChange={(e) => setSetorHistorico(e.target.value)}
-              >
-                <option value="">Todos os setores</option>
-                {setores.map((setor) => (
-                  <option key={setor.id} value={setor.nome}>{setor.nome}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="card-panel">
-              <div className="panel-header">
-                <div>
-                  <h2 className="panel-title">Atendimentos encerrados</h2>
-                  <p className="panel-subtitle">Concluídos ou cancelados na fila. A tabela seguinte reúne a série histórica importada.</p>
-                </div>
-              </div>
-              <div className="table-wrapper">
-                <table className="custom-table">
-                  <thead>
-                    <tr>
-                      <th>Paciente</th>
-                      <th>ID</th>
-                      <th>Setor</th>
-                      <th>Status</th>
-                      <th>Duração</th>
-                      <th className="action-col">Ação</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {finalizados.length === 0 ? (
-                      <tr>
-                        <td colSpan="6" className="empty-text">Nenhum atendimento encerrado.</td>
-                      </tr>
-                    ) : (
-                      finalizados.map((p) => (
-                        <tr key={p.id}>
-                          <td className="patient-name">{p.paciente_nome}</td>
-                          <td>{p.prontuario || '—'}</td>
-                          <td className="sector-name">{p.setor_nome || 'N/A'}</td>
-                          <td>
-                            <span className="status-text">{textoStatus(p.status)}</span>
-                          </td>
-                          <td>{textoDuracao(p.data_entrada, p.data_fim)}</td>
-                          <td className="action-col">
-                            <div className="row-actions">
-                              <button onClick={() => abrirEdicao(p)} className="btn-secondary">
-                                Editar
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="card-panel history-table-panel">
-                <div className="panel-header">
-                  <div>
-                    <h2 className="panel-title">Registros do ano</h2>
-                    <p className="panel-subtitle">{historicoFiltrado.length} de {historico.length} internações</p>
-                  </div>
-                </div>
-
-                <div className="table-wrapper history-table-scroll">
-                  <table className="custom-table">
-                    <thead>
-                      <tr>
-                        <th>Paciente</th>
-                        <th>Idade</th>
-                        <th>Setor</th>
-                        <th>Entrada</th>
-                        <th>Saída</th>
-                        <th>Permanência</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {historicoFiltrado.length === 0 ? (
-                        <tr>
-                          <td colSpan="6" className="empty-text">Nenhuma internação com esse filtro.</td>
-                        </tr>
-                      ) : (
-                        historicoFiltrado.map((item) => (
-                          <tr key={item.paciente_id_origem}>
-                            <td className="patient-name">{item.paciente_nome}</td>
-                            <td>{item.idade}</td>
-                            <td className="sector-name">{item.setor_nome}</td>
-                            <td>{formatarData(item.data_entrada)}</td>
-                            <td>{formatarData(item.data_saida)}</td>
-                            <td>{textoPermanencia(item.permanencia_dias)}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-          </>
+          <Historico
+            atendimentos={atendimentos}
+            historico={historico}
+            setores={setores}
+            onEditar={abrirEdicao}
+          />
         ) : (
-          <div>
-            {!metricas ? (
-              <p className="empty-text">Carregando análise...</p>
-            ) : (
-              <>
-                <div className="card-panel">
-                  <h2 className="panel-title">Admissões por mês</h2>
-                  <p className="panel-subtitle">
-                    {metricas.total_historico} internações em 2025. A altura compara o volume de cada mês.
-                  </p>
-                  <GraficoAdmissoes itens={metricas.admissoes_por_mes} />
-                </div>
-
-                <div className="painel-grid">
-                  <div className="card-panel">
-                    <h2 className="panel-title">Permanência por setor</h2>
-                    <p className="panel-subtitle">Média de dias de leito</p>
-                    <div className="history-bars">
-                      {metricas.permanencia_por_setor.map((item) => (
-                        <div key={item.setor} className="rank-row">
-                          <span>{item.setor}</span>
-                          <span className="sector-count">
-                            {Number(item.media_dias).toFixed(1)} dias · {item.total_pacientes}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="card-panel">
-                    <h2 className="panel-title">Permanência por idade</h2>
-                    <p className="panel-subtitle">Média de dias de leito</p>
-                    <div className="history-bars">
-                      {metricas.permanencia_por_faixa.map((item) => (
-                        <div key={item.faixa} className="rank-row">
-                          <span>{item.faixa}</span>
-                          <span className="sector-count">
-                            {Number(item.media_dias).toFixed(1)} dias · {item.total_pacientes}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+          <Painel metricas={metricas} />
         )}
       </main>
 
